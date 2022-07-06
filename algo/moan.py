@@ -5,7 +5,7 @@ import torch
 from common.functional import dict_batch_generator
 
 
-class MOPO():
+class MOAN():
     def __init__(
             self,
             policy,
@@ -16,6 +16,7 @@ class MOPO():
             rollout_length,
             batch_size,
             real_ratio,
+            discriminator,
             logger,
             model_batch_size=256,
             rollout_batch_size=50000,
@@ -49,6 +50,7 @@ class MOPO():
         self.max_epoch = max_epoch
         self.hold_out_ratio = hold_out_ratio
         self.model_tot_train_timesteps = 0
+        self.discriminator = discriminator
         self.logger = logger
 
     def _sample_initial_transitions(self):

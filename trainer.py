@@ -31,10 +31,12 @@ class Trainer:
         self._eval_episodes = eval_episodes
 
     def train_dynamics(self):
+        start_time = time.time()
         self.algo.learn_dynamics()
         #self.algo.save_dynamics_model(
             #save_path=os.path.join(self.logger.writer.get_logdir(), "dynamics_model")
         #)
+        self.logger.print("total time: {:.3f}s".format(time.time() - start_time))
 
     def train_policy(self):
         start_time = time.time()
@@ -86,7 +88,7 @@ class Trainer:
                 eval_ep_info_buffer.append(
                     {"episode_reward": episode_reward, "episode_length": episode_length}
                 )
-                num_episodes +=1
+                num_episodes += 1
                 episode_reward, episode_length = 0, 0
                 obs = self.eval_env.reset()
         

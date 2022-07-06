@@ -14,7 +14,7 @@ from torch.utils.tensorboard import SummaryWriter
 from models.transition_model import TransitionModel
 from models.policy_models import MLP, ActorProb, Critic, DiagGaussian
 from algo.sac import SACPolicy
-from algo.mopo import MOPO
+from algo.moan import MOAN
 from common.buffer import ReplayBuffer
 from common.logger import Logger
 from trainer import Trainer
@@ -23,7 +23,7 @@ from models.discriminator import Discriminator
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--algo-name", type=str, default="mopo")
+    parser.add_argument("--algo-name", type=str, default="MOAN")
     parser.add_argument("--task", type=str, default="hopper-medium-replay-v0")
     parser.add_argument("--seed", type=int, default=1)
     parser.add_argument("--actor-lr", type=float, default=3e-4)
@@ -88,6 +88,23 @@ def train(args=get_args()):
     config_path = f"config.{task}"
     config = importlib.import_module(config_path).default_config
 
+    # create buffer
+    offline_buffer = ReplayBuffer(
+        buffer_size=len(dataset["observations"]),
+        obs_shape=args.obs_shape,
+        obs_dtype=np.float32,
+        action_dim=args.action_dim,
+        action_dtype=np.float32
+    )
+    offline_buffer.load_dataset(dataset)
+    model_buffer = ReplayBuffer(
+        buffer_size=args.rollout_batch_size * args.rollout_length * args.model_retain_epochs,
+        obs_shape=args.obs_shape,
+        obs_dtype=np.float32,
+        action_dim=args.action_dim,
+        action_dtype=np.float32
+    )
+
     # create policy model
     actor_backbone = MLP(input_dim=np.prod(args.obs_shape), hidden_dims=[256, 256])
     critic1_backbone = MLP(input_dim=np.prod(args.obs_shape) + args.action_dim, hidden_dims=[256, 256])
@@ -135,7 +152,8 @@ def train(args=get_args()):
     # create discriminator
     discriminator = Discriminator(obs_shape=args.obs_shape,
                                   act_shape=args.action_dim,
-                                  logger=logger
+                                  logger=logger,
+                                  offline_buffer=offline_buffer
                                   )
 
     # create dynamics model
@@ -146,25 +164,8 @@ def train(args=get_args()):
                                      **config["transition_params"]
                                      )
 
-    # create buffer
-    offline_buffer = ReplayBuffer(
-        buffer_size=len(dataset["observations"]),
-        obs_shape=args.obs_shape,
-        obs_dtype=np.float32,
-        action_dim=args.action_dim,
-        action_dtype=np.float32
-    )
-    offline_buffer.load_dataset(dataset)
-    model_buffer = ReplayBuffer(
-        buffer_size=args.rollout_batch_size * args.rollout_length * args.model_retain_epochs,
-        obs_shape=args.obs_shape,
-        obs_dtype=np.float32,
-        action_dim=args.action_dim,
-        action_dtype=np.float32
-    )
-
-    # create MOPO algo
-    algo = MOPO(
+    # create MOAN algo
+    algo = MOAN(
         sac_policy,
         dynamics_model,
         offline_buffer=offline_buffer,
@@ -173,6 +174,7 @@ def train(args=get_args()):
         rollout_length=args.rollout_length,
         batch_size=args.batch_size,
         real_ratio=args.real_ratio,
+        discriminator=discriminator,
         logger=logger,
         **config["mopo_params"]
     )
