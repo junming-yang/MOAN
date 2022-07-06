@@ -13,6 +13,7 @@ class TransitionModel:
                  obs_space,
                  action_space,
                  static_fns,
+                 discriminator,
                  holdout_ratio=0.1,
                  inc_var_loss=False,
                  use_weight_decay=False,
@@ -21,7 +22,6 @@ class TransitionModel:
         obs_dim = obs_space.shape[0]
         action_dim = action_space.shape[0]
 
-        # fix hidden_dims
         self.model = EnsembleModel(obs_dim=obs_dim, action_dim=action_dim, device=util.device, **kwargs['model'])
         self.static_fns = static_fns
         # print("params", type(self.model.parameters()))
@@ -30,6 +30,7 @@ class TransitionModel:
         # exit(0)
 
         # fix lr
+        self.discriminator = discriminator
         self.model_optimizer = torch.optim.Adam(self.model.parameters(), lr=0.001)
 
         self.networks = {
@@ -91,6 +92,7 @@ class TransitionModel:
         # predict with model
         model_input = torch.cat([obs_batch, action_batch], dim=-1)
         predictions = self.model.predict(model_input)
+
         # compute training loss
         groundtruths = torch.cat((delta_obs_batch, reward_batch), dim=-1)
         train_mse_losses, train_var_losses = self.model_loss(predictions, groundtruths)
@@ -105,10 +107,12 @@ class TransitionModel:
             train_transition_loss += decay_loss
         else:
             decay_loss = None
+
         # update transition model
         self.model_optimizer.zero_grad()
         train_transition_loss.backward()
         self.model_optimizer.step()
+
         # compute test loss for elite model
         return {
             "loss/train_model_loss_mse": train_mse_loss.item(),

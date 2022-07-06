@@ -18,6 +18,7 @@ from algo.mopo import MOPO
 from common.buffer import ReplayBuffer
 from common.logger import Logger
 from trainer import Trainer
+from models.discriminator import Discriminator
 
 
 def get_args():
@@ -131,10 +132,17 @@ def train(args=get_args()):
         device=args.device
     )
 
+    # create discriminator
+    discriminator = Discriminator(obs_shape=args.obs_shape,
+                                  act_shape=args.action_dim,
+                                  logger=logger
+                                  )
+
     # create dynamics model
     dynamics_model = TransitionModel(env.observation_space,
                                      env.action_space,
                                      static_fns=static_fns,
+                                     discriminator=discriminator,
                                      **config["transition_params"]
                                      )
 

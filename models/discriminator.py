@@ -1,6 +1,5 @@
 # -*- coding: UTF-8 -*-
 import random
-import time
 from typing import Optional, List
 
 import numpy as np
@@ -8,16 +7,15 @@ import torch
 import torch.nn as nn
 from d3rlpy.models.torch import ProbabilisticEnsembleDynamicsModel
 
-from tensorboardX import SummaryWriter
-
 
 class Discriminator(nn.Module):
-    def __init__(self, dataset, obs_shape, act_s):
+    def __init__(self, obs_shape, act_shape, logger, interval=5, lr=0.0001):
         super(Discriminator, self).__init__()
         self.observation_shape = obs_shape
-        self.action_size = act_s
-        self.dataset = dataset
-        self.batch_size = 100
+        self.action_size = act_shape
+        self.interval = interval
+        self._learning_rate = lr
+        self.logger = logger
         self.model = nn.Sequential(
             nn.Linear(26, 512),
             nn.LeakyReLU(0.2, inplace=True),
@@ -26,14 +24,10 @@ class Discriminator(nn.Module):
             nn.Linear(256, 1),
             nn.Sigmoid(),
         )
-        self._optim = torch.optim.Adam(self.model.parameters())
+        self._optim = torch.optim.Adam(self.model.parameters(), lr=lr)
         self._criterion = torch.nn.BCELoss()
-        self._learning_rate = 0.0001
         self.device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
         self.cnt = 0
-        self.save_var = True
-        if self.save_var:
-            self.writer = SummaryWriter('./runs/var/var_{}'.format(time.strftime("%Y%m%d%H%M", time.localtime())))
 
     def forward(self, next_state) -> torch.Tensor:
         return self.model(next_state)
@@ -80,15 +74,20 @@ class Discriminator(nn.Module):
             fake_loss = self._criterion(self.model(learner.detach()), torch.zeros((100, 1), device=obs_t.device))
             g_loss = self._criterion(self.model(learner), torch.ones((100, 1), device=obs_t.device))
             if i % 3 == 0 and i > 0 and self.save_var:
-                self.writer.add_scalar("var/var", var.detach().mean(), self.cnt)
-                self.writer.add_scalar("var/model_expert", self.model(expert).detach().mean(), self.cnt)
-                self.writer.add_scalar("var/model_learner", self.model(learner).detach().mean(), self.cnt)
+                self.logger.record("var/var", var.detach().mean(), self.cnt, printed=False)
+                self.logger.record("var/model_expert", self.model(expert).detach().mean(), self.cnt, printed=False)
+                self.logger.record("var/model_learner", self.model(learner).detach().mean(), self.cnt, printed=False)
                 self.cnt += 1
             discriminator_loss = fake_loss.mean() + real_loss.mean()
             generate_loss = g_loss.mean()
             loss_sum += discriminator_loss
             loss_gen_sum += generate_loss
         return loss_sum, loss_gen_sum
+
+    def update(self, loss):
+        self._optim.zero_grad()
+        loss.backward()
+        self._optim.step()
 
     def compute_penalty(self,
                         observations: np.ndarray,
@@ -116,3 +115,7 @@ class Discriminator(nn.Module):
         d_penalty = 1 - d_penalty
         d_penalty = d_penalty.detach().cpu().numpy()
         return d_penalty
+
+    @property
+    def get_interval(self):
+        return self.interval
