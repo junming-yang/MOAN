@@ -193,7 +193,7 @@ def train(args=get_args()):
 
     # pretrain dynamics model on the whole dataset
     trainer.train_dynamics()
-
+    exit()
     # begin train
     trainer.train_policy()
 

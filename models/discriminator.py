@@ -62,7 +62,7 @@ class Discriminator(nn.Module):
         for i in range(pre_mean.shape[0]):
             learner = torch.cat([model_input, pre_mean[i]], dim=1)
             real_loss = self._criterion(self.model(expert), torch.ones(batch_size, 1))
-            fake_loss = self._criterion(self.model(learner.detach()), torch.zeros(batch_size, 1))
+            fake_loss = self._criterion(self.model(learner), torch.zeros(batch_size, 1))
             g_loss = self._criterion(self.model(learner), torch.ones(batch_size, 1))
 
             # record expert and learner var
@@ -75,7 +75,7 @@ class Discriminator(nn.Module):
             generate_loss = g_loss.mean()
             loss_sum += discriminator_loss
             loss_gen_sum += generate_loss
-        self.logger.record("loss/d_loss", loss_sum.mean(), self.cnt)
+        self.logger.record("loss/d_loss", loss_sum.mean(), self.cnt, printed=False)
         self.logger.record("loss/g_loss", loss_gen_sum.mean(), self.cnt, printed=False)
         return loss_sum, loss_gen_sum
 

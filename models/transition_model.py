@@ -100,9 +100,9 @@ class TransitionModel:
         train_mse_loss = torch.sum(train_mse_losses)
         train_var_loss = torch.sum(train_var_losses)
         train_d_loss, train_g_loss = self.discriminator.compute_loss(model_input, predictions)
-        d_coff = 0.001
+        d_coff = 0.1
+        # mse around 4, var around -32, d_loss around 8
         train_transition_loss = train_mse_loss + train_var_loss + d_coff * train_d_loss
-        # Todo: add discriminator
         train_transition_loss += 0.01 * torch.sum(self.model.max_logvar) - 0.01 * torch.sum(
             self.model.min_logvar)  # why
         if self.use_weight_decay:
@@ -114,9 +114,9 @@ class TransitionModel:
         # update transition model and discriminator
         self.model_optimizer.zero_grad()
         train_transition_loss.backward(retain_graph=True)
-        self.model_optimizer.step()
         if self.update_count > 0 and self.update_count % self.discriminator.get_interval == 0:
             self.discriminator.update(train_d_loss)
+        self.model_optimizer.step()
         self.update_count += 1
 
         # compute test loss for elite model
