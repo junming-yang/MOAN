@@ -8,7 +8,7 @@ import torch.nn as nn
 
 
 class Discriminator(nn.Module):
-    def __init__(self, obs_shape, act_shape, logger, offline_buffer, interval=5, lr=0.0001):
+    def __init__(self, obs_shape, act_shape, logger, offline_buffer, interval=3, lr=0.0001):
         super(Discriminator, self).__init__()
         self.observation_shape = obs_shape[0]
         self.action_size = act_shape

@@ -100,7 +100,7 @@ class TransitionModel:
         train_mse_loss = torch.sum(train_mse_losses)
         train_var_loss = torch.sum(train_var_losses)
         train_d_loss, train_g_loss = self.discriminator.compute_loss(model_input, predictions)
-        d_coff = 0.1
+        d_coff = 1
         # mse around 4, var around -32, d_loss around 8
         train_transition_loss = train_mse_loss + train_var_loss + d_coff * train_d_loss
         train_transition_loss += 0.01 * torch.sum(self.model.max_logvar) - 0.01 * torch.sum(
