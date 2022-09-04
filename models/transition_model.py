@@ -13,7 +13,10 @@ class TransitionModel:
                  obs_space,
                  action_space,
                  static_fns,
+                 lr,
                  discriminator,
+                 d_coeff=0,
+                 d_penalty=True,
                  holdout_ratio=0.1,
                  inc_var_loss=False,
                  use_weight_decay=False,
@@ -24,18 +27,15 @@ class TransitionModel:
 
         self.model = EnsembleModel(obs_dim=obs_dim, action_dim=action_dim, device=util.device, **kwargs['model'])
         self.static_fns = static_fns
-        # print("params", type(self.model.parameters()))
-        # for i, p in enumerate(self.model.parameters()):
-        #     print(i, p.shape)
-        # exit(0)
+        self.lr = lr
 
-        # fix lr
         self.discriminator = discriminator
-        self.model_optimizer = torch.optim.Adam(self.model.parameters(), lr=0.001)
-
+        self.model_optimizer = torch.optim.Adam(self.model.parameters(), self.lr)
         self.networks = {
             "model": self.model
         }
+        self.d_penalty = d_penalty
+        self.d_coeff = d_coeff
         self.obs_space = obs_space
         self.holdout_ratio = holdout_ratio
         self.inc_var_loss = inc_var_loss
@@ -100,9 +100,12 @@ class TransitionModel:
         train_mse_loss = torch.sum(train_mse_losses)
         train_var_loss = torch.sum(train_var_losses)
         train_d_loss, train_g_loss = self.discriminator.compute_loss(model_input, predictions)
-        d_coff = 1
         # mse around 4, var around -32, d_loss around 8
-        train_transition_loss = train_mse_loss + train_var_loss + d_coff * train_d_loss
+        # debug
+        if self.update_count == 0:
+            print("mse_loss:{}, var_loss:{}, d_loss:{}".format(train_mse_loss, train_var_loss, train_d_loss))
+
+        train_transition_loss = (train_mse_loss + train_var_loss) * train_d_loss
         train_transition_loss += 0.01 * torch.sum(self.model.max_logvar) - 0.01 * torch.sum(
             self.model.min_logvar)  # why
         if self.use_weight_decay:
@@ -144,13 +147,14 @@ class TransitionModel:
         return mse_losses, var_losses
 
     @torch.no_grad()
-    def predict(self, obs, act, deterministic=False):
+    def predict(self, obs, act, deterministic=False, penalty_coeff=0):
         """
         predict next_obs and rew
+        return: next_obs, rewards, terminals, info
         """
         if len(obs.shape) == 1:
-            obs = obs[None,]
-            act = act[None,]
+            obs = obs[None, ]
+            act = act[None, ]
         if not isinstance(obs, torch.Tensor):
             obs = torch.FloatTensor(obs).to(util.device)
         if not isinstance(act, torch.Tensor):
@@ -181,7 +185,6 @@ class TransitionModel:
         terminals = self.static_fns.termination_fn(obs, act, next_obs)
 
         # penalty rewards
-        penalty_coeff = 1
         penalty_learned_var = True
         if penalty_coeff != 0:
             if not penalty_learned_var:
@@ -197,13 +200,19 @@ class TransitionModel:
                 penalty = np.max(dists, axis=0)  # max distances over models
             else:
                 penalty = np.amax(np.linalg.norm(ensemble_model_stds, axis=2), axis=0)
-            # Todo: revise penalty
-            penalized_rewards = rewards - penalty_coeff * penalty
+            d_penalty = 1
+            if self.d_penalty:
+                d_penalty = np.squeeze(self.discriminator.compute_penalty(obs, act, next_obs, rewards))
+            penalized_rewards = rewards - 0.00001 * d_penalty - penalty_coeff * penalty
+            # print("rewards:{}, penalty:{}".format(rewards.mean(), penalty.mean()))å
         else:
+            penalty = 0
             penalized_rewards = rewards
 
         assert (type(next_obs) == np.ndarray)
         info = {'penalty': penalty, 'penalized_rewards': penalized_rewards}
+        penalized_rewards = penalized_rewards[:, None]
+        terminals = terminals[:, None]
         return next_obs, penalized_rewards, terminals, info
 
     def update_best_snapshots(self, val_losses):
@@ -232,7 +241,7 @@ class TransitionModel:
         self.model.load_state_dicts(self.model_best_snapshots)
 
     def save_model(self, info):
-        save_dir = os.path.join(util.logger.log_path, 'models')
+        save_dir = os.path.join(self.logger.log_path, 'models')
         if not os.path.exists(save_dir):
             os.makedirs(save_dir)
         model_save_dir = os.path.join(save_dir, "ite_{}".format(info))
@@ -243,7 +252,7 @@ class TransitionModel:
             torch.save(network, save_path)
 
     def load_model(self, info):
-        save_dir = os.path.join(util.logger.log_path, 'models')
+        save_dir = os.path.join(self.logger.log_path, 'models')
         if not os.path.exists(save_dir):
             os.makedirs(save_dir)
         model_save_dir = os.path.join(save_dir, "ite_{}".format(info))
@@ -251,4 +260,4 @@ class TransitionModel:
             os.makedirs(model_save_dir)
         for network_name, network in self.networks.items():
             save_path = os.path.join(model_save_dir, network_name + ".pt")
-            torch.save(network, save_path)
+            torch.load(network, save_path)

@@ -1,14 +1,11 @@
 # -*- coding: UTF-8 -*-
-import random
-from typing import Optional, List
-
 import numpy as np
 import torch
 import torch.nn as nn
 
 
 class Discriminator(nn.Module):
-    def __init__(self, obs_shape, act_shape, logger, offline_buffer, interval=3, lr=0.0001):
+    def __init__(self, obs_shape, act_shape, logger, offline_buffer, interval=20, lr=0.0003):
         super(Discriminator, self).__init__()
         self.observation_shape = obs_shape[0]
         self.action_size = act_shape
@@ -84,6 +81,7 @@ class Discriminator(nn.Module):
         loss.backward()
         self._optim.step()
 
+    @torch.no_grad()
     def compute_penalty(self,
                         observations: np.ndarray,
                         actions: np.ndarray,
@@ -101,15 +99,14 @@ class Discriminator(nn.Module):
 
         return: penalty factor d_penalty
         """
-        obs_t = torch.tensor(observations)
-        act_t = torch.tensor(actions)
-        obs_tp1 = torch.tensor(next_obs)
-        rew_tp1 = torch.tensor(rewards)
-        rew_p = torch.cat([obs_t, act_t, obs_tp1, rew_tp1], dim=1).to('cpu')
+        obs_t = torch.tensor(observations, dtype=torch.float32)
+        act_t = torch.tensor(actions, dtype=torch.float32)
+        obs_tp1 = torch.tensor(next_obs, dtype=torch.float32)
+        rew_tp1 = torch.tensor(np.reshape(rewards, (-1, 1)), dtype=torch.float32)
+        rew_p = torch.cat([obs_t, act_t, obs_tp1, rew_tp1], dim=1)
         d_penalty = self.model(rew_p)
         d_penalty = 1 - d_penalty
-        d_penalty = d_penalty.detach().cpu().numpy()
-        return d_penalty
+        return d_penalty.detach().cpu().numpy()
 
     @property
     def get_interval(self):

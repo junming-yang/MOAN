@@ -62,10 +62,8 @@ class MOAN():
         observations = init_transitions["observations"]
         for _ in range(self._rollout_length):
             actions = self.policy.sample_action(observations)
-            next_observations, rewards, terminals, infos = self.dynamics_model.predict(observations, actions)
-            rew_len = len(rewards)
-            rewards = rewards.reshape(rew_len, 1)
-            terminals = terminals.reshape(rew_len, 1)
+            next_observations, rewards, terminals, infos = self.dynamics_model.predict(observations, actions,
+                                                                                       penalty_coeff=self._reward_penalty_coef)
             self.model_buffer.add_batch(observations, next_observations, actions, rewards, terminals)
             nonterm_mask = (~terminals).flatten()
             if nonterm_mask.sum() == 0:
@@ -109,7 +107,8 @@ class MOAN():
             if updated:
                 model_train_epochs += num_epochs_since_prev_best
                 num_epochs_since_prev_best = 0
-            if num_epochs_since_prev_best >= self.max_model_update_epochs_to_improve or model_train_iters > self.max_model_train_iterations:
+            if num_epochs_since_prev_best >= self.max_model_update_epochs_to_improve or model_train_iters > self.max_model_train_iterations\
+                    or self.model_tot_train_timesteps > 600000:
                 break
             # Debug
             # break
@@ -124,21 +123,6 @@ class MOAN():
         model_log_infos['misc/model_train_epochs'] = model_train_epochs
         model_log_infos['misc/model_train_train_steps'] = model_train_iters
         return model_log_infos
-
-    """
-    def learn_dynamics(self):
-        data = self.offline_buffer.sample_all()
-        train_inputs, train_outputs = format_samples_for_training(data)
-        max_epochs = 1 if self.dynamics_model.model_loaded else None
-        loss = self.dynamics_model.train(
-            train_inputs,
-            train_outputs,
-            batch_size=self._batch_size,
-            max_epochs=max_epochs,
-            holdout_ratio=0.2
-        )
-        return loss
-    """
 
     def learn_policy(self):
         real_sample_size = int(self._batch_size * self._real_ratio)
