@@ -5,7 +5,7 @@ import torch
 from common.functional import dict_batch_generator
 
 
-class MOAN():
+class MOAN:
     def __init__(
             self,
             policy,

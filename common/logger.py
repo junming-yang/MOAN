@@ -7,6 +7,11 @@ class Logger:
         self.writer = writer
         self.output_file = open(os.path.join(self.writer.get_logdir(), output_fname), 'w')
         atexit.register(self.output_file.close)
+        self.record_file = open(os.path.join(self.writer.get_logdir(), "penalty.txt"), 'w')
+        atexit.register(self.record_file.close)
+        self.record_file = open(os.path.join(self.writer.get_logdir(), "mse.txt"), 'w')
+        atexit.register(self.record_file.close)
+
 
     def record(self, tag, scalar_value, global_step, printed=True):
         self.writer.add_scalar(tag, scalar_value, global_step)
@@ -18,3 +23,11 @@ class Logger:
     def print(self, info):
         print("\033[1;32m [info]\033[0m: " + info)
         self.output_file.write(info + '\n')
+
+    def record_file(self, info, mse=True):
+        if mse:
+            count = 0
+            self.record_file.write("mse epoch:" + count + info + '\n')
+        else:
+            count = 0
+            self.record_file.write("mse epoch:" + count + info + '\n')

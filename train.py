@@ -69,7 +69,7 @@ def get_args():
     parser.add_argument("--epoch", type=int, default=600)
     parser.add_argument("--step-per-epoch", type=int, default=1000)
     parser.add_argument("--eval_episodes", type=int, default=10)
-    parser.add_argument("--batch-size", type=int, default=256)
+    parser.add_argument("--batch-size", type=int, default=512)
     parser.add_argument("--logdir", type=str, default="log")
     parser.add_argument("--log-freq", type=int, default=1000)
     parser.add_argument("--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu")

@@ -99,13 +99,13 @@ class TransitionModel:
         train_mse_losses, train_var_losses = self.model_loss(predictions, groundtruths)
         train_mse_loss = torch.sum(train_mse_losses)
         train_var_loss = torch.sum(train_var_losses)
-        train_d_loss, train_g_loss = self.discriminator.compute_loss(model_input, predictions)
+        train_d_loss, train_g_loss = self.discriminator.compute_loss(model_input, predictions, groundtruths)
         # mse around 4, var around -32, d_loss around 8
         # debug
         if self.update_count == 0:
             print("mse_loss:{}, var_loss:{}, d_loss:{}".format(train_mse_loss, train_var_loss, train_d_loss))
-
-        train_transition_loss = (train_mse_loss + train_var_loss) * train_d_loss
+        coeff = 0.95
+        train_transition_loss = coeff * (train_mse_loss + train_var_loss) + (1 - coeff) * train_g_loss
         train_transition_loss += 0.01 * torch.sum(self.model.max_logvar) - 0.01 * torch.sum(
             self.model.min_logvar)  # why
         if self.use_weight_decay:
@@ -117,7 +117,7 @@ class TransitionModel:
         # update transition model and discriminator
         self.model_optimizer.zero_grad()
         train_transition_loss.backward(retain_graph=True)
-        if self.update_count > 0 and self.update_count % self.discriminator.get_interval == 0:
+        if 0 < self.update_count < 70000 and self.update_count % self.discriminator.get_interval == 0:
             self.discriminator.update(train_d_loss)
         self.model_optimizer.step()
         self.update_count += 1
@@ -200,10 +200,11 @@ class TransitionModel:
                 penalty = np.max(dists, axis=0)  # max distances over models
             else:
                 penalty = np.amax(np.linalg.norm(ensemble_model_stds, axis=2), axis=0)
-            d_penalty = 1
+            d_penalty = 0
             if self.d_penalty:
                 d_penalty = np.squeeze(self.discriminator.compute_penalty(obs, act, next_obs, rewards))
-            penalized_rewards = rewards - 0.00001 * d_penalty - penalty_coeff * penalty
+            # penalized_rewards = rewards - penalty_coeff * penalty
+            penalized_rewards = rewards - penalty_coeff * penalty
             # print("rewards:{}, penalty:{}".format(rewards.mean(), penalty.mean()))å
         else:
             penalty = 0
