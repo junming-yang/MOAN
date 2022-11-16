@@ -44,6 +44,7 @@ class TransitionModel:
         self.act_normalizer = StandardNormalizer()
         self.model_train_timesteps = 0
         self.update_count = 0
+        self.coeff = 0.95
 
     @torch.no_grad()
     def eval_data(self, data, update_elite_models=False):
@@ -104,8 +105,7 @@ class TransitionModel:
         # debug
         if self.update_count == 0:
             print("mse_loss:{}, var_loss:{}, d_loss:{}".format(train_mse_loss, train_var_loss, train_d_loss))
-        coeff = 0.95
-        train_transition_loss = coeff * (train_mse_loss + train_var_loss) + (1 - coeff) * train_g_loss
+        train_transition_loss = self.coeff * (train_mse_loss + train_var_loss) + (1 - self.coeff) * train_g_loss
         train_transition_loss += 0.01 * torch.sum(self.model.max_logvar) - 0.01 * torch.sum(
             self.model.min_logvar)  # why
         if self.use_weight_decay:
@@ -117,8 +117,10 @@ class TransitionModel:
         # update transition model and discriminator
         self.model_optimizer.zero_grad()
         train_transition_loss.backward(retain_graph=True)
-        if 0 < self.update_count < 70000 and self.update_count % self.discriminator.get_interval == 0:
+        if 0 < self.update_count < 50000 and self.update_count % self.discriminator.get_interval == 0:
             self.discriminator.update(train_d_loss)
+        if self.update_count == 50000:
+            self.coeff = 1
         self.model_optimizer.step()
         self.update_count += 1
 
