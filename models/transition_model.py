@@ -44,7 +44,7 @@ class TransitionModel:
         self.act_normalizer = StandardNormalizer()
         self.model_train_timesteps = 0
         self.update_count = 0
-        self.coeff = 0.95
+        self.coeff = 0.9
 
     @torch.no_grad()
     def eval_data(self, data, update_elite_models=False):
@@ -117,10 +117,10 @@ class TransitionModel:
         # update transition model and discriminator
         self.model_optimizer.zero_grad()
         train_transition_loss.backward(retain_graph=True)
-        if 0 < self.update_count < 50000 and self.update_count % self.discriminator.get_interval == 0:
+        if 0 < self.update_count < 100000 and self.update_count % self.discriminator.get_interval == 0:
             self.discriminator.update(train_d_loss)
-        if self.update_count == 50000:
-            self.coeff = 1
+        if self.update_count == 80000:
+            self.coeff = 0.98
         self.model_optimizer.step()
         self.update_count += 1
 
@@ -243,8 +243,8 @@ class TransitionModel:
     def load_best_snapshots(self):
         self.model.load_state_dicts(self.model_best_snapshots)
 
-    def save_model(self, info):
-        save_dir = os.path.join(self.logger.log_path, 'models')
+    def save_model(self, logger, info):
+        save_dir = os.path.join(logger.log_path, 'models')
         if not os.path.exists(save_dir):
             os.makedirs(save_dir)
         model_save_dir = os.path.join(save_dir, "ite_{}".format(info))
@@ -254,8 +254,8 @@ class TransitionModel:
             save_path = os.path.join(model_save_dir, network_name + ".pt")
             torch.save(network, save_path)
 
-    def load_model(self, info):
-        save_dir = os.path.join(self.logger.log_path, 'models')
+    def load_model(self, logger, info):
+        save_dir = os.path.join(logger.log_path, 'models')
         if not os.path.exists(save_dir):
             os.makedirs(save_dir)
         model_save_dir = os.path.join(save_dir, "ite_{}".format(info))
