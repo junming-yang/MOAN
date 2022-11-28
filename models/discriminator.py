@@ -4,12 +4,13 @@ import torch
 import torch.nn as nn
 from torch.autograd import Variable
 
+
 class Discriminator(nn.Module):
-    def __init__(self, obs_shape, act_shape, logger, offline_buffer, interval=30, lr=1e-4):
+    def __init__(self, obs_shape, act_shape, logger, offline_buffer, interval=8, lr=1e-4):
         super(Discriminator, self).__init__()
         self.observation_shape = obs_shape[0]
         self.action_size = act_shape
-        self.z = 2 * self.observation_shape + self.action_size + 1
+        self.z = self.observation_shape + self.action_size
         self.interval = interval
         self.offline_buffer = offline_buffer
         self._learning_rate = lr
@@ -43,22 +44,26 @@ class Discriminator(nn.Module):
         return rollout_data
 
     def compute_loss(self,
+                     data_input: torch.Tensor,
                      model_input: torch.Tensor,
-                     predictions: torch.Tensor,
-                     groundtruths: torch.Tensor
                      ):
         """
         model_input: [obs_t, act_t]
         predictions shape: [ensemble_num, batch_size, next_obs + rew]
         """
+        """
         pre_mean, pre_var = predictions
         batch_size = model_input.shape[0]
         expert = torch.cat([model_input, groundtruths], dim=1)
         # expert = self.rollout_offline_buffer(batch_size)
+        """
+        batch_size = model_input.shape[0]
+        expert = torch.tensor(data_input, dtype=torch.float32)
         loss_sum = torch.tensor(0.0, dtype=torch.float32)
         loss_gen_sum = torch.tensor(0.0, dtype=torch.float32)
-        for i in range(pre_mean.shape[0]):
-            learner = torch.cat([model_input, pre_mean[i]], dim=1)
+        for i in range(data_input.shape[0]):
+            #learner = torch.cat([model_input, pre_mean[i]], dim=1)
+            learner = torch.tensor(model_input, dtype=torch.float32)
             real_loss = self._criterion(self.model(expert), Variable(torch.ones(batch_size, 1), requires_grad=False))
             fake_loss = self._criterion(self.model(learner.detach()), Variable(torch.zeros(batch_size, 1), requires_grad=False))
             g_loss = self._criterion(self.model(learner), Variable(torch.ones(batch_size, 1), requires_grad=False))

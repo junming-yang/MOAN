@@ -108,7 +108,7 @@ class MOAN:
                 model_train_epochs += num_epochs_since_prev_best
                 num_epochs_since_prev_best = 0
             if num_epochs_since_prev_best >= self.max_model_update_epochs_to_improve or model_train_iters > self.max_model_train_iterations\
-                    or self.model_tot_train_timesteps > 200000:
+                    or self.model_tot_train_timesteps > 300000:
                 break
             # Debug
             # break

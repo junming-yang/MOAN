@@ -151,10 +151,3 @@ class EnsembleModel(nn.Module):
     def load_state_dicts(self, state_dicts):
         for i in range(self.ensemble_size):
             self.ensemble_models[i].load_state_dict(state_dicts[i])
-
-
-if __name__ == "__main__":
-    device = torch.device("cpu")
-    model = EnsembleModel(10, 3, [20, 20], device)
-    for p in model.parameters():
-        print(p)

@@ -44,6 +44,7 @@ class TransitionModel:
         self.act_normalizer = StandardNormalizer()
         self.model_train_timesteps = 0
         self.update_count = 0
+        self.ad_update_count = 0
         self.coeff = 0.9
 
     @torch.no_grad()
@@ -100,12 +101,13 @@ class TransitionModel:
         train_mse_losses, train_var_losses = self.model_loss(predictions, groundtruths)
         train_mse_loss = torch.sum(train_mse_losses)
         train_var_loss = torch.sum(train_var_losses)
+        """
         train_d_loss, train_g_loss = self.discriminator.compute_loss(model_input, predictions, groundtruths)
-        # mse around 4, var around -32, d_loss around 8
         # debug
         if self.update_count == 0:
             print("mse_loss:{}, var_loss:{}, d_loss:{}".format(train_mse_loss, train_var_loss, train_d_loss))
-        train_transition_loss = self.coeff * (train_mse_loss + train_var_loss) + (1 - self.coeff) * train_g_loss
+        """
+        train_transition_loss = train_mse_loss + train_var_loss
         train_transition_loss += 0.01 * torch.sum(self.model.max_logvar) - 0.01 * torch.sum(
             self.model.min_logvar)  # why
         if self.use_weight_decay:
@@ -116,11 +118,13 @@ class TransitionModel:
 
         # update transition model and discriminator
         self.model_optimizer.zero_grad()
-        train_transition_loss.backward(retain_graph=True)
+        train_transition_loss.backward()
+        """
         if 0 < self.update_count < 100000 and self.update_count % self.discriminator.get_interval == 0:
             self.discriminator.update(train_d_loss)
         if self.update_count == 80000:
             self.coeff = 0.98
+        """
         self.model_optimizer.step()
         self.update_count += 1
 
@@ -133,6 +137,53 @@ class TransitionModel:
             "misc/max_std": self.model.max_logvar.mean().item(),
             "misc/min_std": self.model.min_logvar.mean().item()
         }
+
+    def adversarial_learning(self, data_batch, model_batch):
+        obs_batch, action_batch, next_obs_batch, reward_batch = \
+            itemgetter("observations", 'actions', 'next_observations', 'rewards')(data_batch)
+        obs_batch = torch.Tensor(obs_batch)
+        action_batch = torch.Tensor(action_batch)
+        next_obs_batch = torch.Tensor(next_obs_batch)
+        reward_batch = torch.Tensor(reward_batch)
+
+        delta_obs_batch = next_obs_batch - obs_batch
+        obs_batch, action_batch = self.transform_obs_action(obs_batch, action_batch)
+
+        # predict with model
+        data_input = torch.cat([obs_batch, action_batch], dim=-1)
+        # Todo: need to fix
+        model_input = torch.cat([model_batch['obs'], model_batch['action']], dim=-1)
+        # predictions = self.model.predict(model_input)
+        # groundtruths = torch.cat((delta_obs_batch, reward_batch), dim=-1)
+
+        if self.ad_update_count == 0:
+            self.ad_model_optimizer = torch.optim.Adam(self.model.parameters(), lr=1e-4)
+
+        data_output, model_output = self._compile_feature(data_input, model_input)
+        #train_d_loss, train_g_loss = self.discriminator.compute_loss(model_input, predictions, groundtruths)
+        train_d_loss, train_g_loss = self.discriminator.compute_loss(data_output, model_output)
+
+        # update transition model and discriminator
+        self.ad_model_optimizer.zero_grad()
+        train_g_loss.backward(retain_graph=True)
+        self.ad_model_optimizer.step()
+
+        if self.ad_update_count % self.discriminator.get_interval == 0:
+            self.discriminator.update(train_d_loss)
+
+        self.ad_update_count += 1
+
+        return {
+            "loss/train_g_loss": train_g_loss,
+            "loss/train_d_loss": train_d_loss
+        }
+
+    def _compile_feature(self, data_input, model_input):
+        for i in range(4):
+            data_output = self.model.feature[i](data_input)
+            model_output = self.model.feature[i](model_input)
+
+            return data_output, model_output
 
     def model_loss(self, predictions, groundtruths, mse_only=False):
         pred_means, pred_logvars = predictions
@@ -155,8 +206,8 @@ class TransitionModel:
         return: next_obs, rewards, terminals, info
         """
         if len(obs.shape) == 1:
-            obs = obs[None, ]
-            act = act[None, ]
+            obs = obs[None,]
+            act = act[None,]
         if not isinstance(obs, torch.Tensor):
             obs = torch.FloatTensor(obs).to(util.device)
         if not isinstance(act, torch.Tensor):
