@@ -149,3 +149,7 @@ class MOAN:
 
     def save_dynamics_model(self, info):
         self.dynamics_model.save_model(self.logger, info)
+
+    def load_dynamics_model(self, info):
+        self.dynamics_model.load_model(info)
+        print("Successfully load model")
