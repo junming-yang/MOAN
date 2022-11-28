@@ -9,15 +9,15 @@ from tqdm import tqdm
 
 class Trainer:
     def __init__(
-        self,
-        algo,
-        eval_env,
-        epoch,
-        step_per_epoch,
-        rollout_freq,
-        logger,
-        log_freq,
-        eval_episodes=10
+            self,
+            algo,
+            eval_env,
+            epoch,
+            step_per_epoch,
+            rollout_freq,
+            logger,
+            log_freq,
+            eval_episodes=10
     ):
         self.algo = algo
         self.eval_env = eval_env
@@ -33,9 +33,9 @@ class Trainer:
     def train_dynamics(self):
         start_time = time.time()
         self.algo.learn_dynamics()
-        #self.algo.save_dynamics_model(
-            #save_path=os.path.join(self.logger.writer.get_logdir(), "dynamics_model")
-        #)
+        # self.algo.save_dynamics_model(
+        # save_path=os.path.join(self.logger.writer.get_logdir(), "dynamics_model")
+        # )
         self.algo.save_dynamics_model("dynamics_model")
         self.logger.print("total time: {:.3f}s".format(time.time() - start_time))
 
@@ -51,6 +51,8 @@ class Trainer:
                         self.algo.rollout_transitions()
                     # update policy by sac
                     loss = self.algo.learn_policy()
+                    if num_timesteps % 30 == 0 and 0 < num_timesteps <= 300:
+                        self.algo.adversarial_model()
                     t.set_postfix(**loss)
                     # log
                     if num_timesteps % self._log_freq == 0:
@@ -60,12 +62,15 @@ class Trainer:
                     t.update(1)
             # evaluate current policy
             eval_info = self._evaluate()
-            ep_reward_mean, ep_reward_std = np.mean(eval_info["eval/episode_reward"]), np.std(eval_info["eval/episode_reward"])
-            ep_length_mean, ep_length_std = np.mean(eval_info["eval/episode_length"]), np.std(eval_info["eval/episode_length"])
+            ep_reward_mean, ep_reward_std = np.mean(eval_info["eval/episode_reward"]), np.std(
+                eval_info["eval/episode_reward"])
+            ep_length_mean, ep_length_std = np.mean(eval_info["eval/episode_length"]), np.std(
+                eval_info["eval/episode_length"])
             self.logger.record("eval/episode_reward", ep_reward_mean, num_timesteps, printed=False)
             self.logger.record("eval/episode_length", ep_length_mean, num_timesteps, printed=False)
-            self.logger.print(f"Epoch #{e}: episode_reward: {ep_reward_mean:.3f} ± {ep_reward_std:.3f}, episode_length: {ep_length_mean:.3f} ± {ep_length_std:.3f}")
-        
+            self.logger.print(
+                f"Epoch #{e}: episode_reward: {ep_reward_mean:.3f} ± {ep_reward_std:.3f}, episode_length: {ep_length_mean:.3f} ± {ep_length_std:.3f}")
+
             # save policy
             torch.save(self.algo.policy.state_dict(), os.path.join(self.logger.writer.get_logdir(), "policy.pth"))
         self.logger.print("total time: {:.3f}s".format(time.time() - start_time))
@@ -92,7 +97,7 @@ class Trainer:
                 num_episodes += 1
                 episode_reward, episode_length = 0, 0
                 obs = self.eval_env.reset()
-        
+
         return {
             "eval/episode_reward": [ep_info["episode_reward"] for ep_info in eval_ep_info_buffer],
             "eval/episode_length": [ep_info["episode_length"] for ep_info in eval_ep_info_buffer]

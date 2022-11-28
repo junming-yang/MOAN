@@ -8,17 +8,17 @@ from torch.autograd import Variable
 class Discriminator(nn.Module):
     def __init__(self, obs_shape, act_shape, logger, offline_buffer, interval=8, lr=1e-4):
         super(Discriminator, self).__init__()
-        self.observation_shape = obs_shape[0]
+        self.observation_shape = obs_shape[0] + 1
         self.action_size = act_shape
-        self.z = self.observation_shape + self.action_size
+        self.z = self.observation_shape
         self.interval = interval
         self.offline_buffer = offline_buffer
         self._learning_rate = lr
         self.logger = logger
         self.model = nn.Sequential(
-            nn.Linear(self.z, 100),
+            nn.Linear(self.z, 256),
             nn.ReLU(),
-            nn.Linear(100, 1),
+            nn.Linear(256, 1),
             nn.Sigmoid(),
         )
         self._optim = torch.optim.Adam(self.model.parameters(), lr=lr)
@@ -57,13 +57,13 @@ class Discriminator(nn.Module):
         expert = torch.cat([model_input, groundtruths], dim=1)
         # expert = self.rollout_offline_buffer(batch_size)
         """
-        batch_size = model_input.shape[0]
-        expert = torch.tensor(data_input, dtype=torch.float32)
+        batch_size = model_input.shape[1]
         loss_sum = torch.tensor(0.0, dtype=torch.float32)
         loss_gen_sum = torch.tensor(0.0, dtype=torch.float32)
         for i in range(data_input.shape[0]):
             #learner = torch.cat([model_input, pre_mean[i]], dim=1)
-            learner = torch.tensor(model_input, dtype=torch.float32)
+            expert = data_input[i]
+            learner = model_input[i]
             real_loss = self._criterion(self.model(expert), Variable(torch.ones(batch_size, 1), requires_grad=False))
             fake_loss = self._criterion(self.model(learner.detach()), Variable(torch.zeros(batch_size, 1), requires_grad=False))
             g_loss = self._criterion(self.model(learner), Variable(torch.ones(batch_size, 1), requires_grad=False))
@@ -84,7 +84,7 @@ class Discriminator(nn.Module):
 
     def update(self, loss):
         self._optim.zero_grad()
-        loss.backward()
+        loss.backward(retain_graph=True)
         self._optim.step()
 
     @torch.no_grad()

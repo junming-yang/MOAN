@@ -111,7 +111,7 @@ class MOAN:
                     or self.model_tot_train_timesteps > 300000:
                 break
             # Debug
-            # break
+            break
         self.dynamics_model.load_best_snapshots()
 
         # evaluate data to update the elite models
@@ -123,6 +123,13 @@ class MOAN:
         model_log_infos['misc/model_train_epochs'] = model_train_epochs
         model_log_infos['misc/model_train_train_steps'] = model_train_iters
         return model_log_infos
+
+    def adversarial_model(self):
+        data_samples = self.offline_buffer.sample(batch_size=256)
+        model_samples = self.model_buffer.sample(batch_size=256)
+        for _ in range(200):  # max_steps
+            self.dynamics_model.adversarial_learning(data_samples, model_samples)
+
 
     def learn_policy(self):
         real_sample_size = int(self._batch_size * self._real_ratio)
