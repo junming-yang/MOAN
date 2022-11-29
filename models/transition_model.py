@@ -272,11 +272,9 @@ class TransitionModel:
             else:
                 penalty = np.amax(np.linalg.norm(ensemble_model_stds, axis=2), axis=0)
             d_penalty = 0
-            # if self.d_penalty:
-            # d_penalty = np.squeeze(self.discriminator.compute_penalty(obs, act, next_obs, rewards))
-            # penalized_rewards = rewards - penalty_coeff * penalty
-            penalized_rewards = rewards - penalty_coeff * penalty
-            # print("rewards:{}, penalty:{}".format(rewards.mean(), penalty.mean()))å
+            if self.d_penalty:
+                d_penalty = np.squeeze(self.discriminator.compute_penalty(next_obs, rewards))
+            penalized_rewards = rewards - penalty_coeff * penalty - self.d_coeff * d_penalty
         else:
             penalty = 0
             penalized_rewards = rewards

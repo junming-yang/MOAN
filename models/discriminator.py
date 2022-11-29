@@ -89,8 +89,8 @@ class Discriminator(nn.Module):
 
     @torch.no_grad()
     def compute_penalty(self,
-                        observations: np.ndarray,
-                        actions: np.ndarray,
+                        # observations: np.ndarray,
+                        # actions: np.ndarray,
                         next_obs: np.ndarray,
                         rewards: np.ndarray,
                         ) -> np.ndarray:
@@ -105,11 +105,12 @@ class Discriminator(nn.Module):
 
         return: penalty factor d_penalty
         """
-        obs_t = torch.tensor(observations, dtype=torch.float32)
-        act_t = torch.tensor(actions, dtype=torch.float32)
+        # obs_t = torch.tensor(observations, dtype=torch.float32)
+        # act_t = torch.tensor(actions, dtype=torch.float32)
         obs_tp1 = torch.tensor(next_obs, dtype=torch.float32)
         rew_tp1 = torch.tensor(np.reshape(rewards, (-1, 1)), dtype=torch.float32)
-        rew_p = torch.cat([obs_t, act_t, obs_tp1, rew_tp1], dim=1)
+        # rew_p = torch.cat([obs_t, act_t, obs_tp1, rew_tp1], dim=1)
+        rew_p = torch.cat([obs_tp1, rew_tp1], dim=1)
         d_penalty = self.forward(rew_p)
         d_penalty = 1 - d_penalty
         return d_penalty.detach().cpu().numpy()

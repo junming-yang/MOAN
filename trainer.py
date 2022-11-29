@@ -56,6 +56,7 @@ class Trainer:
                         self.algo.rollout_transitions()
                     # update policy by sac
                     loss = self.algo.learn_policy()
+                    # model adversary update
                     if num_timesteps % 30 == 0 and 0 < num_timesteps <= 600:
                         self.algo.adversarial_model()
                     t.set_postfix(**loss)
