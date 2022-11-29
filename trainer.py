@@ -17,7 +17,8 @@ class Trainer:
             rollout_freq,
             logger,
             log_freq,
-            eval_episodes=10
+            eval_episodes=10,
+            load_model=False
     ):
         self.algo = algo
         self.eval_env = eval_env
@@ -29,11 +30,11 @@ class Trainer:
         self.logger = logger
         self._log_freq = log_freq
         self._eval_episodes = eval_episodes
+        self._load_model = load_model
 
     def train_dynamics(self):
-        load = True
-        if load:
-            self.algo.load_dynamics_model("model.pth")
+        if self._load_model:
+            self.algo.load_dynamics_model("model.pt")
         else:
             start_time = time.time()
             self.algo.learn_dynamics()
@@ -55,7 +56,7 @@ class Trainer:
                         self.algo.rollout_transitions()
                     # update policy by sac
                     loss = self.algo.learn_policy()
-                    if num_timesteps % 30 == 0 and 0 < num_timesteps <= 300:
+                    if num_timesteps % 30 == 0 and 0 < num_timesteps <= 600:
                         self.algo.adversarial_model()
                     t.set_postfix(**loss)
                     # log

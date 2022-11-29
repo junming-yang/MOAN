@@ -48,7 +48,7 @@ def get_args():
     parser.add_argument("--tau", type=float, default=0.005)
     parser.add_argument("--alpha", type=float, default=0.2)
     parser.add_argument('--auto-alpha', default=True)
-    parser.add_argument('--target-entropy', type=int, default=-3)
+    parser.add_argument('--target-entropy', type=int, default=-1)
     parser.add_argument('--alpha-lr', type=float, default=3e-4)
 
     # dynamics model's arguments
@@ -63,15 +63,16 @@ def get_args():
     parser.add_argument("--rollout-batch-size", type=int, default=50000)
     parser.add_argument("--rollout-freq", type=int, default=1000)
     parser.add_argument("--model-retain-epochs", type=int, default=5)
-    parser.add_argument("--real-ratio", type=float, default=0.05)
+    parser.add_argument("--real-ratio", type=float, default=0.35)
     parser.add_argument("--dynamics-model-dir", type=str, default=None)
 
     parser.add_argument("--epoch", type=int, default=600)
     parser.add_argument("--step-per-epoch", type=int, default=1000)
     parser.add_argument("--eval_episodes", type=int, default=10)
-    parser.add_argument("--batch-size", type=int, default=512)
+    parser.add_argument("--batch-size", type=int, default=256)
     parser.add_argument("--logdir", type=str, default="log")
     parser.add_argument("--log-freq", type=int, default=1000)
+    parser.add_argument("--load-model", type=bool, default=False)
     parser.add_argument("--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu")
 
     return parser.parse_args()
@@ -211,7 +212,8 @@ def train(args=get_args()):
         rollout_freq=args.rollout_freq,
         logger=logger,
         log_freq=args.log_freq,
-        eval_episodes=args.eval_episodes
+        eval_episodes=args.eval_episodes,
+        load_model=args.load_model
     )
 
     # pretrain dynamics model on the whole dataset

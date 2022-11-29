@@ -111,7 +111,7 @@ class MOAN:
                     or self.model_tot_train_timesteps > 300000:
                 break
             # Debug
-            break
+            # break
         self.dynamics_model.load_best_snapshots()
 
         # evaluate data to update the elite models

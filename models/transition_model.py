@@ -30,7 +30,7 @@ class TransitionModel:
         self.lr = lr
 
         self.discriminator = discriminator
-        self.model_optimizer = torch.optim.Adam(self.model.parameters(), self.lr)
+        self.model_optimizer = torch.optim.Adam(self.model.parameters(), lr=self.lr)
         self.networks = {
             "model": self.model
         }
@@ -168,25 +168,26 @@ class TransitionModel:
         # groundtruths = torch.cat((delta_obs_batch, reward_batch), dim=-1)
 
         if self.ad_update_count == 0:
-            self.ad_model_optimizer = torch.optim.Adam(self.model.parameters(), lr=1e-4)
+            for params in self.model_optimizer.param_groups:
+                params['lr'] *= 0.1
 
         data_next_obs, data_rew = self.model.predict(data_input)
         model_next_obs, model_rew = self.model.predict(model_input)
         # data_output = torch.cat((data_next_obs, data_rew), dim=-1)
         # model_output = torch.cat((model_next_obs, model_rew), dim=-1)
 
-        # print("shape:{}".format(data_next_obs.shape))  # [7, 256, 24]
+        # print("shape:{}".format(data_next_obs.shape))  # [7, 256, 13]
         # train_d_loss, train_g_loss = self.discriminator.compute_loss(model_input, predictions, groundtruths)
         train_d_loss, train_g_loss = self.discriminator.compute_loss(data_next_obs, model_next_obs)
 
-        self.ad_model_optimizer.zero_grad()
-        train_g_loss.backward()
+        self.model_optimizer.zero_grad()
+        train_g_loss.backward(retain_graph=True)
 
         # update transition model and discriminator
         self.discriminator.update(train_d_loss)
 
         if self.ad_update_count % self.discriminator.get_interval == 0:
-            self.ad_model_optimizer.step()
+            self.model_optimizer.step()
 
         self.ad_update_count += 1
 

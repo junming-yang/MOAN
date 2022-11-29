@@ -6,7 +6,7 @@ from torch.autograd import Variable
 
 
 class Discriminator(nn.Module):
-    def __init__(self, obs_shape, act_shape, logger, offline_buffer, interval=8, lr=1e-4):
+    def __init__(self, obs_shape, act_shape, logger, offline_buffer, interval=5, lr=1e-4):
         super(Discriminator, self).__init__()
         self.observation_shape = obs_shape[0] + 1
         self.action_size = act_shape
@@ -16,9 +16,9 @@ class Discriminator(nn.Module):
         self._learning_rate = lr
         self.logger = logger
         self.model = nn.Sequential(
-            nn.Linear(self.z, 256),
+            nn.Linear(self.z, 200),
             nn.ReLU(),
-            nn.Linear(256, 1),
+            nn.Linear(200, 1),
             nn.Sigmoid(),
         )
         self._optim = torch.optim.Adam(self.model.parameters(), lr=lr)
