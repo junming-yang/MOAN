@@ -2,7 +2,7 @@
 
 if (($1==1)); then
   echo "train hopper env"
-  python3 train.py --task "hopper-medium-replay-v2" --rollout-length 5 --reward-penalty-coef 1 --seed 50 --load-model True
+  python3 train.py --task "halfcheetah-medium-replay-v2" --rollout-length 5 --reward-penalty-coef 1 --seed 30 --load-model True
 elif (($1 == 2)); then
   echo  "train halfcheetah env"
   python train.py --task "halfcheetah-medium-expert-v2" --rollout-length 5 --reward-penalty-coef 1

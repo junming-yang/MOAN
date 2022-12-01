@@ -17,8 +17,9 @@ class Trainer:
             rollout_freq,
             logger,
             log_freq,
+            load_model,
+            env_name,
             eval_episodes=10,
-            load_model=False
     ):
         self.algo = algo
         self.eval_env = eval_env
@@ -31,10 +32,11 @@ class Trainer:
         self._log_freq = log_freq
         self._eval_episodes = eval_episodes
         self._load_model = load_model
+        self._env_name = env_name
 
     def train_dynamics(self):
         if self._load_model:
-            self.algo.load_dynamics_model("model.pt")
+            self.algo.load_dynamics_model(self._env_name)
         else:
             start_time = time.time()
             self.algo.learn_dynamics()

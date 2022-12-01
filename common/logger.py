@@ -13,7 +13,6 @@ class Logger:
         self.record_file = open(os.path.join(self.writer.get_logdir(), "mse.txt"), 'w')
         atexit.register(self.record_file.close)
 
-
     def record(self, tag, scalar_value, global_step, printed=True):
         self.writer.add_scalar(tag, scalar_value, global_step)
         if printed:

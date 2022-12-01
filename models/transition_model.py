@@ -321,10 +321,10 @@ class TransitionModel:
             save_path = os.path.join(model_save_dir, network_name + ".pt")
             torch.save(network, save_path)
 
-    def load_model(self, info):
+    def load_model(self, env_name):
         file_path = os.path.dirname(os.path.realpath(__file__))
         root_path = os.path.dirname(file_path)
         model_load_dir = os.path.join(root_path, 'dymodel')
         for network_name, network in self.networks.items():
-            load_path = os.path.join(model_load_dir, "model.pt")
+            load_path = os.path.join(model_load_dir, env_name + ".pt")
             self.model = torch.load(load_path)

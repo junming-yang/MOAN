@@ -53,17 +53,17 @@ def get_args():
 
     # dynamics model's arguments
     parser.add_argument("--dynamics-lr", type=float, default=0.001)
-    parser.add_argument("--d-coeff", type=float, default=0.0001)
+    parser.add_argument("--d-coeff", type=float, default=0.000001)
     parser.add_argument("--n-ensembles", type=int, default=7)
     parser.add_argument("--n-elites", type=int, default=5)
-    parser.add_argument("--reward-penalty-coef", type=float, default=0.000001)
+    parser.add_argument("--reward-penalty-coef", type=float, default=1)
     parser.add_argument("--discriminator-penalty", type=bool, default=True)
 
     parser.add_argument("--rollout-length", type=int, default=5)
     parser.add_argument("--rollout-batch-size", type=int, default=50000)
     parser.add_argument("--rollout-freq", type=int, default=1000)
     parser.add_argument("--model-retain-epochs", type=int, default=5)
-    parser.add_argument("--real-ratio", type=float, default=0.35)
+    parser.add_argument("--real-ratio", type=float, default=0.05)
     parser.add_argument("--dynamics-model-dir", type=str, default=None)
 
     parser.add_argument("--epoch", type=int, default=600)
@@ -101,6 +101,12 @@ def train(args=get_args()):
     writer = SummaryWriter(log_path)
     writer.add_text("args", str(args))
     logger = Logger(writer)
+
+    # debug: save args setting
+    info = f'{args.task.replace("-", "_")}-{t0}-{args}'
+    args_record = open('args.txt', 'a')
+    print(info, file=args_record)
+    args_record.close()
 
     # import configs
     task = args.task.split('-')[0]
@@ -213,7 +219,8 @@ def train(args=get_args()):
         logger=logger,
         log_freq=args.log_freq,
         eval_episodes=args.eval_episodes,
-        load_model=args.load_model
+        load_model=args.load_model,
+        env_name=args.task.replace("-", "_"),
     )
 
     # pretrain dynamics model on the whole dataset
