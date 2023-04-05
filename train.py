@@ -19,6 +19,7 @@ from common.buffer import ReplayBuffer
 from common.logger import Logger
 from trainer import Trainer
 from models.discriminator import Discriminator
+from common.util import set_device_and_logger
 
 PARAMETER_TABLE = {
     # Params: (rollout_length, penalty)
@@ -42,18 +43,18 @@ def get_args():
     parser.add_argument("--algo-name", type=str, default="MOAN")
     parser.add_argument("--task", type=str, default="hopper-medium-replay-v2")
     parser.add_argument("--seed", type=int, default=1)
-    parser.add_argument("--actor-lr", type=float, default=3e-4)
-    parser.add_argument("--critic-lr", type=float, default=3e-4)
+    parser.add_argument("--actor-lr", type=float, default=1e-4)
+    parser.add_argument("--critic-lr", type=float, default=3e-4)   # hopper critic lr = 3e-4
     parser.add_argument("--gamma", type=float, default=0.99)
-    parser.add_argument("--tau", type=float, default=0.005)
+    parser.add_argument("--tau", type=float, default=5e-3)
     parser.add_argument("--alpha", type=float, default=0.2)
     parser.add_argument('--auto-alpha', default=True)
     parser.add_argument('--target-entropy', type=int, default=-1)
-    parser.add_argument('--alpha-lr', type=float, default=3e-4)
+    parser.add_argument('--alpha-lr', type=float, default=5e-3)     # hopper alpha lr = 5e-3
 
     # dynamics model's arguments
     parser.add_argument("--dynamics-lr", type=float, default=0.001)
-    parser.add_argument("--d-coeff", type=float, default=0.000001)
+    parser.add_argument("--d-coeff", type=float, default=0.1)
     parser.add_argument("--n-ensembles", type=int, default=7)
     parser.add_argument("--n-elites", type=int, default=5)
     parser.add_argument("--reward-penalty-coef", type=float, default=1)
@@ -63,10 +64,10 @@ def get_args():
     parser.add_argument("--rollout-batch-size", type=int, default=50000)
     parser.add_argument("--rollout-freq", type=int, default=1000)
     parser.add_argument("--model-retain-epochs", type=int, default=5)
-    parser.add_argument("--real-ratio", type=float, default=0.05)
+    parser.add_argument("--real-ratio", type=float, default=0.5)
     parser.add_argument("--dynamics-model-dir", type=str, default=None)
 
-    parser.add_argument("--epoch", type=int, default=600)
+    parser.add_argument("--epoch", type=int, default=400)
     parser.add_argument("--step-per-epoch", type=int, default=1000)
     parser.add_argument("--eval_episodes", type=int, default=10)
     parser.add_argument("--batch-size", type=int, default=256)
@@ -101,6 +102,9 @@ def train(args=get_args()):
     writer = SummaryWriter(log_path)
     writer.add_text("args", str(args))
     logger = Logger(writer)
+
+    Device_id = 0 if args.device == 'cuda' else -1
+    set_device_and_logger(Device_id, logger)
 
     # debug: save args setting
     info = f'{args.task.replace("-", "_")}-{t0}-{args}'

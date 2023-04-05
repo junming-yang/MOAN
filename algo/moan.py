@@ -62,7 +62,7 @@ class MOAN:
         observations = init_transitions["observations"]
         for _ in range(self._rollout_length):
             actions = self.policy.sample_action(observations)
-            next_observations, rewards, terminals, infos = self.dynamics_model.predict(observations, actions,
+            next_observations, rewards, penalty, terminals, infos = self.dynamics_model.predict(observations, actions,
                                                                                        penalty_coeff=self._reward_penalty_coef)
             self.model_buffer.add_batch(observations, next_observations, actions, rewards, terminals)
             nonterm_mask = (~terminals).flatten()
@@ -129,7 +129,6 @@ class MOAN:
         model_samples = self.model_buffer.sample(batch_size=256)
         for _ in range(200):  # max_steps
             self.dynamics_model.adversarial_learning(data_samples, model_samples)
-
 
     def learn_policy(self):
         real_sample_size = int(self._batch_size * self._real_ratio)
