@@ -10,11 +10,6 @@ from operator import itemgetter
 from common.normalizer import StandardNormalizer
 from copy import deepcopy
 
-#from matplotlib import pyplot as plt
-#from sklearn import manifold
-
-#import util from common
-
 class TransitionModel:
     def __init__(self,
                  obs_space,
@@ -119,7 +114,7 @@ class TransitionModel:
         if self.update_count == 0:
             print("mse_loss:{}, var_loss:{}, d_loss:{}".format(train_mse_loss, train_var_loss, train_d_loss))
 
-        train_transition_loss = train_mse_loss + train_var_loss + 1 * train_g_loss
+        train_transition_loss = train_mse_loss + train_var_loss + 2 * train_g_loss
         train_transition_loss += 0.01 * torch.sum(self.model.max_logvar) - 0.01 * torch.sum(
             self.model.min_logvar)  # why
         if self.use_weight_decay:
@@ -185,11 +180,7 @@ class TransitionModel:
 
         data_next_obs, data_rew = self.model.predict(data_input)
         model_next_obs, model_rew = self.model.predict(model_input)
-        # data_output = torch.cat((data_next_obs, data_rew), dim=-1)
-        # model_output = torch.cat((model_next_obs, model_rew), dim=-1)
 
-        # print("shape:{}".format(data_next_obs.shape))  # [7, 256, 13]
-        # train_d_loss, train_g_loss = self.discriminator.compute_loss(model_input, predictions, groundtruths)
         train_d_loss, train_g_loss = self.discriminator.compute_loss(data_next_obs, model_next_obs)
 
         self.model_optimizer.zero_grad()
@@ -341,63 +332,3 @@ class TransitionModel:
         for network_name, network in self.networks.items():
             load_path = os.path.join(model_load_dir, "model.pt")
             self.model = torch.load(load_path)
-
-"""
-def TSNE(model):
-    #X是特征，不包含target; X_tsne是已经降维之后的特征
-    X1 = f['observations'][1000:2200]
-    A1 = f['actions'][1000:2200]
-    obs_normalizer = StandardNormalizer()
-    act_normalizer = StandardNormalizer()
-    X1 = obs_normalizer.transform(X1)
-    A1 = act_normalizer.transform(A1)
-    input = torch.cat((torch.tensor(X1), torch.tensor(A1)), -1)
-    output, logvar = model.predict(input)
-    #output = output - 0.03 * logvar
-    output = output[:5, :, :]
-    X1 = output.mean(0).detach().numpy()[:, :-1]
-    tsne = manifold.TSNE(n_components=2, init='pca', random_state=501)
-    X_tsne = tsne.fit_transform(X1)
-    # print("Org data dimension is {}.Embedded data dimension is {}".format(X1.shape[-1], X_tsne.shape[-1]))
-    X2 = f['next_observations'][1000:2200]
-    X_tsne2 = tsne.fit_transform(X2)
-    X3 = np.concatenate((X2[:, 10:], f['rewards'][1000:2200][:, np.newaxis]), axis=1)
-    X_tsne3 = tsne.fit_transform(X3)
-    X4 = np.concatenate((X2[:, 10:], output.mean(0).detach().numpy()[:, 11:]), axis=1)
-    X_tsne4 = tsne.fit_transform(X4)
-    '''嵌入空间可视化'''
-    x_min, x_max = X_tsne.min(0), X_tsne.max(0)
-    X_norm = (X_tsne - x_min) / (x_max - x_min)  # 归一化
-    x2_min, x2_max = X_tsne2.min(0), X_tsne2.max(0)
-    X2_norm = (X_tsne2 - x2_min) / (x2_max - x2_min)
-    x3_min, x3_max = X_tsne3.min(0), X_tsne3.max(0)
-    X3_norm = (X_tsne3 - x3_min) / (x3_max - x3_min)
-    x4_min, x4_max = X_tsne4.min(0), X_tsne4.max(0)
-    X4_norm = (X_tsne4 - x4_min) / (x4_max - x4_min)
-    plt.figure(figsize=(8, 8))
-    Y_norm = X_norm[:, 1]
-    X_norm = X_norm[:, 0]
-    Y2_norm = X2_norm[:, 1]
-    X2_norm = X2_norm[:, 0]
-    Y3_norm = X3_norm[:, 1]
-    X3_norm = X3_norm[:, 0]
-    Y4_norm = X4_norm[:, 1]
-    X4_norm = X4_norm[:, 0]
-    plt.scatter(X2_norm, Y2_norm, color='#FF5C68', label='true state', edgecolor='#FF030E', alpha=2 / 3)
-    plt.scatter(X_norm, Y_norm, color='#6B63FF', label='dynamics state', edgecolor='#2F18FF', alpha=2 / 3)
-    plt.scatter(X3_norm, Y3_norm, color='#FFC65E', label='true reward', edgecolor='#FFA300', alpha=2 / 3)
-    plt.scatter(X4_norm, Y4_norm, color='#5AB865', label='dynamics reward', edgecolor='#008300', alpha=2 / 3)
-    plt.legend(loc='upper right')
-    plt.title('t-SNE embedding of MOAN')
-    #plt.show()
-    plt.savefig('./scatter2.svg', dpi=1000, format='svg', transparent=True)
-
-
-if __name__ == '__main__':
-    file_path = os.path.dirname(os.path.realpath(__file__))
-    root_path = os.path.dirname(file_path)
-    model_path = model_load_dir = os.path.join(root_path, 'dymodel', 'hopper_medium_replay_v2.pt')
-    model = torch.load(model_path)
-    f = h5py.File('./hopper_medium_replay-v2.hdf5', 'r')
-    TSNE(model)
-"""

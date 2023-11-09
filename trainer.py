@@ -58,21 +58,6 @@ class Trainer:
                         self.algo.rollout_transitions()
                     # update policy by sac
                     loss = self.algo.learn_policy()
-                    # model adversary update
-                    """
-                    if num_timesteps % 30 == 0 and 0 < num_timesteps <= 600:
-                        self.algo.adversarial_model()
-                    if num_timesteps == 600:
-                        f = open("PenaltyScore.txt", "w")
-                        data = self.algo.offline_buffer.sample(batch_size=500000)
-                        for i in tqdm(range(500000)):
-                            next_obs, penalized_rewards, penalty, _, _ = self.algo.dynamics_model.predict(
-                                data['observations'][i], data['actions'][i], penalty_coeff=1)
-                            f.write(str(penalty) + "," + str(np.sum((data['next_observations'][i] - next_obs) ** 2)) + "\n")
-                        self.logger.print("total time: {:.3f}s".format(time.time() - start_time))
-                        f.close()
-                        exit()
-                    """
                     t.set_postfix(**loss)
                     # log
                     if num_timesteps % self._log_freq == 0:
@@ -95,7 +80,7 @@ class Trainer:
             torch.save(self.algo.policy.state_dict(), os.path.join(self.logger.writer.get_logdir(), "policy.pth"))
         self.logger.print("total time: {:.3f}s".format(time.time() - start_time))
 
-    def _evaluate(self):
+    def _(self):
         self.algo.policy.eval()
         obs = self.eval_env.reset()
         eval_ep_info_buffer = []

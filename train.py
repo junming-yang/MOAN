@@ -44,13 +44,13 @@ def get_args():
     parser.add_argument("--task", type=str, default="hopper-medium-replay-v2")
     parser.add_argument("--seed", type=int, default=1)
     parser.add_argument("--actor-lr", type=float, default=1e-4)
-    parser.add_argument("--critic-lr", type=float, default=3e-4)   # hopper critic lr = 3e-4
+    parser.add_argument("--critic-lr", type=float, default=3e-4)
     parser.add_argument("--gamma", type=float, default=0.99)
     parser.add_argument("--tau", type=float, default=5e-3)
     parser.add_argument("--alpha", type=float, default=0.2)
     parser.add_argument('--auto-alpha', default=True)
     parser.add_argument('--target-entropy', type=int, default=-1)
-    parser.add_argument('--alpha-lr', type=float, default=5e-3)     # hopper alpha lr = 5e-3
+    parser.add_argument('--alpha-lr', type=float, default=5e-3)
 
     # dynamics model's arguments
     parser.add_argument("--dynamics-lr", type=float, default=0.001)
@@ -67,7 +67,7 @@ def get_args():
     parser.add_argument("--real-ratio", type=float, default=0.5)
     parser.add_argument("--dynamics-model-dir", type=str, default=None)
 
-    parser.add_argument("--epoch", type=int, default=400)
+    parser.add_argument("--epoch", type=int, default=1000)
     parser.add_argument("--step-per-epoch", type=int, default=1000)
     parser.add_argument("--eval_episodes", type=int, default=10)
     parser.add_argument("--batch-size", type=int, default=256)
